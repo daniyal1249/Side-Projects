@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+
+*.png
+
+chess_csp.py
+test_os.py
