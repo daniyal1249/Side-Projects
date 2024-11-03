@@ -53,13 +53,19 @@ class King(ChessPiece):
             self.shape = shape_dict['bK']
 
     def gen_possible_moves(self, all_pieces):
-        possible_moves = [(i, j) for i in range(self.x - 1, self.x + 2) 
+        possible_moves = {(i, j) for i in range(self.x - 1, self.x + 2) 
                          for j in range(self.y - 1, self.y + 2) 
                          if 0 <= i < 8 and 0 <= j < 8 
-                         and (i, j) != (self.x, self.y)]
+                         and (i, j) != (self.x, self.y)}
         for piece in all_pieces:
             if (piece.x, piece.y) in possible_moves and piece.color == self.color:
                 possible_moves.remove((piece.x, piece.y))
+            
+            # elif piece.color != self.color:
+            #     for pos in piece.gen_possible_moves(all_pieces):
+            #         if pos in possible_moves:
+            #             possible_moves.remove((piece.x, piece.y))
+
 
         return possible_moves
         
@@ -72,12 +78,12 @@ class Queen(ChessPiece):
             self.shape = shape_dict['bQ']
 
     def gen_possible_moves(self, all_pieces):
-        possible_moves = [(i, j) for i in range(self.x - 7, self.x + 8)
+        possible_moves = {(i, j) for i in range(self.x - 7, self.x + 8)
                           for j in range(self.y - 7, self.y + 8)
                           if 0 <= i < 8 and 0 <= j < 8
                           and ((i == self.x or j == self.y)
                           or abs(i - self.x) == abs(j - self.y))
-                          and (i, j) != (self.x, self.y)]
+                          and (i, j) != (self.x, self.y)}
         
         for piece in all_pieces:
             if (piece.x, piece.y) in possible_moves:
@@ -102,11 +108,11 @@ class Rook(ChessPiece):
             self.shape = shape_dict['bR']
 
     def gen_possible_moves(self, all_pieces):
-        possible_moves = [(i, j) for i in range(self.x - 7, self.x + 8)
+        possible_moves = {(i, j) for i in range(self.x - 7, self.x + 8)
                           for j in range(self.y - 7, self.y + 8)
                           if 0 <= i < 8 and 0 <= j < 8 
                           and (i == self.x or j == self.y) 
-                          and (i, j) != (self.x, self.y)]
+                          and (i, j) != (self.x, self.y)}
         
         for piece in all_pieces:
             if (piece.x, piece.y) in possible_moves:
@@ -131,11 +137,11 @@ class Bishop(ChessPiece):
             self.shape = shape_dict['bB']
 
     def gen_possible_moves(self, all_pieces):
-        possible_moves = [(i, j) for i in range(self.x - 7, self.x + 8)
+        possible_moves = {(i, j) for i in range(self.x - 7, self.x + 8)
                           for j in range(self.y - 7, self.y + 8)
                           if 0 <= i < 8 and 0 <= j < 8 
                           and abs(i - self.x) == abs(j - self.y) 
-                          and (i, j) != (self.x, self.y)]
+                          and (i, j) != (self.x, self.y)}
 
         for piece in all_pieces:
             if (piece.x, piece.y) in possible_moves:
@@ -160,11 +166,11 @@ class Knight(ChessPiece):
             self.shape = shape_dict['bN']
 
     def gen_possible_moves(self, all_pieces):
-        possible_moves = [(i, j) for i in range(self.x - 2, self.x + 3)
+        possible_moves = {(i, j) for i in range(self.x - 2, self.x + 3)
                           for j in range(self.y - 2, self.y + 3) 
                           if ((abs(i - self.x) == 2 and abs(j - self.y) == 1) 
                           or (abs(i - self.x) == 1 and abs(j - self.y) == 2))
-                          and 0 <= i < 8 and 0 <= j < 8]
+                          and 0 <= i < 8 and 0 <= j < 8}
         
         for piece in all_pieces:
             if (piece.x, piece.y) in possible_moves and piece.color == self.color:
@@ -185,9 +191,9 @@ class Pawn(ChessPiece):
             vstep = 1
         else:
             vstep = -1
-        possible_moves = [(self.x, self.y + vstep)] if 0 <= self.y + vstep < 8 else []
+        possible_moves = {(self.x, self.y + vstep)} if 0 <= self.y + vstep < 8 else set()
         if (self.y == 1 and vstep == 1) or (self.y == 6 and vstep == -1):
-            possible_moves.append((self.x, self.y + (2 * vstep)))
+            possible_moves.add((self.x, self.y + (2 * vstep)))
 
         for piece in all_pieces:
             if (piece.x, piece.y) in possible_moves:
@@ -198,7 +204,7 @@ class Pawn(ChessPiece):
             if (piece.x, piece.y) == (self.x + 1, self.y + vstep) \
                 or (piece.x, piece.y) == (self.x - 1, self.y + vstep):
                 if piece.color != self.color:
-                    possible_moves.append((piece.x, piece.y))
+                    possible_moves.add((piece.x, piece.y))
 
         return possible_moves
 
@@ -284,7 +290,7 @@ all_pieces = kings + queens + rooks + bishops + knights + pawns
 # Initialize variables
 click_x, click_y = None, None
 click_processed = True
-possible_moves = []
+possible_moves = set()
 player = 'white'
 
 def update_game():
@@ -300,7 +306,7 @@ def update_game():
             elif board.highlight and (click_x, click_y) in possible_moves:
                 board.highlight.draw(click_x, click_y)
                 board.highlight_square(piece, possible_moves, highlight=False)
-                possible_moves = []
+                possible_moves = set()
                 player = switch_player(player)
                 break
 
