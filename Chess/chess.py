@@ -62,10 +62,8 @@ class King(ChessPiece):
                 possible_moves.remove((piece.x, piece.y))
             
             # elif piece.color != self.color:
-            #     for pos in piece.gen_possible_moves(all_pieces):
-            #         if pos in possible_moves:
-            #             possible_moves.remove((piece.x, piece.y))
-
+            #     for pos in piece.gen_possible_moves(all_pieces).intersection(possible_moves):
+            #         possible_moves.remove(pos)
 
         return possible_moves
         
@@ -236,7 +234,7 @@ class Board():
                 if (i + j) % 2 == 0:
                     self.draw_square(i, j, 'tan', outline=False)
 
-    def highlight_square(self, piece, possible_moves, highlight=True):
+    def highlight_square(self, piece, possible_moves, highlight=True):  # modify default params
         for stamp in self.stamp_id_set:
             pointer.clearstamp(stamp)
         self.stamp_id_set.clear()
@@ -249,7 +247,47 @@ class Board():
         else:
             self.highlight = None
 
-        # print(self.stamp_id_set)
+class Check():  # can still move kings next to each other
+    def __init__(self):
+        self.attacker = None
+        
+    def set_attacker(self, piece):
+        if piece.color == 'white':
+            opp_king_index = 1
+        else:
+            opp_king_index = 0
+            
+        if (kings[opp_king_index].x, kings[opp_king_index].y) in piece.gen_possible_moves(all_pieces):
+            self.attacker = piece
+        else:
+            self.attacker = None
+
+    def filter_moves(self, piece):
+        if piece.color == 'white':
+            king_index = 0
+        else:
+            king_index = 1
+
+        if self.attacker is not None and piece in kings:
+            other_pieces = [elem for elem in all_pieces if elem != piece]
+            return piece.gen_possible_moves(all_pieces).difference(self.attacker.gen_possible_moves(other_pieces))
+        
+        elif self.attacker is not None and piece not in kings:
+            filtered_moves = piece.gen_possible_moves(all_pieces).intersection(self.attacker.gen_possible_moves(all_pieces))
+            x, y = piece.x, piece.y
+            for pos in filtered_moves.copy():
+                piece.x, piece.y = pos
+                if (kings[king_index].x, kings[king_index].y) in self.attacker.gen_possible_moves(all_pieces):
+                    filtered_moves.remove(pos)
+
+            piece.x, piece.y = x, y
+            if (self.attacker.x, self.attacker.y) in piece.gen_possible_moves(all_pieces):
+                filtered_moves.add((self.attacker.x, self.attacker.y))
+
+            return filtered_moves
+
+        else:
+            return piece.gen_possible_moves(all_pieces)  # check if it makes copy
 
 
 def click_pos(x, y):
@@ -279,6 +317,7 @@ for color in ['yellow', 'gray']:
 
 # Set up board and pieces
 board = Board()
+check = Check()
 kings = [King(4, 0, 'white'), King(4, 7, 'black')]
 queens = [Queen(3, 0, 'white'), Queen(3, 7, 'black')]
 rooks = [Rook(0, 0, 'white'), Rook(7, 0, 'white'), Rook(0, 7, 'black'), Rook(7, 7, 'black')]
@@ -297,20 +336,26 @@ def update_game():
     global player, possible_moves, click_processed
 
     if not click_processed:
+
+        # Selecting a piece
         for piece in all_pieces:  # try dictionary approach
             if (click_x, click_y) == (piece.x, piece.y) and piece.color == player:
-                    possible_moves = piece.gen_possible_moves(all_pieces)
-                    board.highlight_square(piece, possible_moves)
-                    break
-            
-            elif board.highlight and (click_x, click_y) in possible_moves:
-                board.highlight.draw(click_x, click_y)
-                board.highlight_square(piece, possible_moves, highlight=False)
-                possible_moves = set()
-                player = switch_player(player)
+                possible_moves = check.filter_moves(piece)
+                board.highlight_square(piece, possible_moves)
                 break
+            
+        # Moving a piece
+        if board.highlight and (click_x, click_y) in possible_moves:
+            board.highlight.draw(click_x, click_y)
+            check.set_attacker(board.highlight)
+            board.highlight_square(piece=None, possible_moves=None, highlight=False)
+            possible_moves = set()
+            player = switch_player(player)
+
+        # checkmate()
 
         click_processed = True
+
 
     screen.update()
     screen.ontimer(update_game, 100)
