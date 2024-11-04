@@ -57,13 +57,18 @@ class King(ChessPiece):
                          for j in range(self.y - 1, self.y + 2) 
                          if 0 <= i < 8 and 0 <= j < 8 
                          and (i, j) != (self.x, self.y)}
-        for piece in all_pieces:
+
+        for piece in all_pieces:  # need to remove pawn diagonal cases
             if (piece.x, piece.y) in possible_moves and piece.color == self.color:
                 possible_moves.remove((piece.x, piece.y))
             
-            # elif piece.color != self.color:
-            #     for pos in piece.gen_possible_moves(all_pieces).intersection(possible_moves):
-            #         possible_moves.remove(pos)
+            elif piece.color != self.color and piece not in kings and piece not in pawns:
+                for pos in piece.gen_possible_moves(all_pieces).intersection(possible_moves):
+                    possible_moves.remove(pos)
+
+            elif piece.color != self.color and piece in kings:
+                for pos in piece.gen_possible_moves(set()).intersection(possible_moves):
+                    possible_moves.remove(pos)
 
         return possible_moves
         
@@ -109,7 +114,7 @@ class Rook(ChessPiece):
         possible_moves = {(i, j) for i in range(self.x - 7, self.x + 8)
                           for j in range(self.y - 7, self.y + 8)
                           if 0 <= i < 8 and 0 <= j < 8 
-                          and (i == self.x or j == self.y) 
+                          and (i == self.x or j == self.y)
                           and (i, j) != (self.x, self.y)}
         
         for piece in all_pieces:
@@ -247,6 +252,12 @@ class Board():
         else:
             self.highlight = None
 
+    def display_message(self, message):
+        pointer.up()
+        pointer.goto(4, 4)  # Position at center
+        pointer.write(message, align="center", font=("Arial", 24, "bold"))
+
+
 class Check():  # can still move kings next to each other
     def __init__(self):
         self.attacker = None
@@ -268,11 +279,11 @@ class Check():  # can still move kings next to each other
         else:
             king_index = 1
 
-        if self.attacker is not None and piece in kings:
-            other_pieces = [elem for elem in all_pieces if elem != piece]
-            return piece.gen_possible_moves(all_pieces).difference(self.attacker.gen_possible_moves(other_pieces))
+        # if self.attacker is not None and piece in kings:
+        #     other_pieces = [elem for elem in all_pieces if elem != piece]
+        #     return piece.gen_possible_moves(all_pieces).difference(self.attacker.gen_possible_moves(other_pieces))
         
-        elif self.attacker is not None and piece not in kings:
+        if self.attacker is not None and piece not in kings:
             filtered_moves = piece.gen_possible_moves(all_pieces).intersection(self.attacker.gen_possible_moves(all_pieces))
             x, y = piece.x, piece.y
             for pos in filtered_moves.copy():
@@ -331,18 +342,23 @@ click_x, click_y = None, None
 click_processed = True
 possible_moves = set()
 player = 'white'
+checkmate = False
 
 def update_game():
-    global player, possible_moves, click_processed
+    global click_processed, possible_moves, player, checkmate
+
+    if checkmate:
+        return
 
     if not click_processed:
+        total_moves = set()
 
         # Selecting a piece
         for piece in all_pieces:  # try dictionary approach
+            total_moves.update(check.filter_moves(piece))
             if (click_x, click_y) == (piece.x, piece.y) and piece.color == player:
                 possible_moves = check.filter_moves(piece)
                 board.highlight_square(piece, possible_moves)
-                break
             
         # Moving a piece
         if board.highlight and (click_x, click_y) in possible_moves:
@@ -352,10 +368,12 @@ def update_game():
             possible_moves = set()
             player = switch_player(player)
 
-        # checkmate()
-
+        # Checkmate
+        if check.attacker and not total_moves:
+            board.display_message("Checkmate!")
+            checkmate = True
+        total_moves.clear()
         click_processed = True
-
 
     screen.update()
     screen.ontimer(update_game, 100)
