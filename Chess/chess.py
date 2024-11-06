@@ -65,7 +65,6 @@ class King(ChessPiece):
                     if abs(piece.x - pos[0]) <= 1 and abs(piece.y - pos[1]) <= 1:
                         possible_moves.remove(pos)
 
-        possible_moves = restrict_moves(self, possible_moves)
         return possible_moves
         
 class Queen(ChessPiece):
@@ -279,12 +278,6 @@ def restrict_moves(piece, possible_moves):
 
     return valid_moves
 
-def generate_moves(piece):
-    possible_moves = piece.gen_possible_moves()
-    if piece in kings:
-        return possible_moves
-    return restrict_moves(piece, possible_moves)
-
 
 def click_pos(x, y):
     global click_x, click_y, click_processed
@@ -342,9 +335,9 @@ def update_game():
         # Selecting a piece
         player_pieces = white_pieces if player == 'white' else black_pieces
         for piece in player_pieces:  # try dictionary approach
-            total_moves.update(generate_moves(piece))
+            total_moves.update(restrict_moves(piece, piece.gen_possible_moves()))
             if (click_x, click_y) == (piece.x, piece.y):
-                possible_moves = generate_moves(piece)
+                possible_moves = restrict_moves(piece, piece.gen_possible_moves())
                 board.highlight_square(piece, possible_moves)
             
         # Moving a piece
@@ -353,13 +346,11 @@ def update_game():
             board.highlight_square(piece=None, possible_moves=None, highlight=False)
             possible_moves = set()
             player = opponent(player)
-            # print(in_check(player))
 
         # Checkmate
         if in_check(player) and not total_moves:
             board.display_message("CHECKMATE")
             checkmate = True
-        # total_moves.clear()
         click_processed = True
 
     screen.update()
