@@ -1,6 +1,7 @@
-import turtle
-import math as m
 import os
+import time
+import math as m
+import turtle
 
 screen = turtle.Screen()
 screen.setup(width=800, height=800)
@@ -209,11 +210,11 @@ class Pawn(ChessPiece):
 
 class Board():
     def __init__(self):
-        self.square_width = 4.8
+        self.square_width = 4.8  # check value later
         self.stamp_id_set = set()
         self.highlight = None
 
-    def draw_square(self, x, y, color, outline):
+    def draw_square(self, x, y, color, outline, width=None):
         pointer.up()
         pointer.goto(x + 0.5, y + 0.5)
 
@@ -226,7 +227,9 @@ class Board():
             pointer.color(color)
             pointer.shape('square')
             
-        pointer.shapesize(self.square_width, self.square_width)  # check values later
+        if width is None:
+            width = self.square_width
+        pointer.shapesize(width, width)
         return pointer.stamp()
 
     def draw(self):
@@ -248,11 +251,27 @@ class Board():
         else:
             self.highlight = None
 
-    def display_message(self, message):
-        pointer.up()
-        pointer.goto(4, 4)  # position at center
-        pointer.color("black")
-        pointer.write(message, align="center", font=("Arial", 30, "bold"))  # make it black and bolder
+    def display_message(self, message, duration=None):
+        text_pointer = turtle.Turtle()
+        text_pointer.hideturtle()
+        text_pointer.speed(0)
+        text_pointer.up()
+        text_pointer.color("black")
+
+        # Create white background
+        for i in range(5, 11):
+            for j in range(7, 9):
+                self.draw_square(i/2 - 1/4, j/2 - 1/4, 'white', outline=False, width=self.square_width/2)
+
+        lines = message.split("\n")
+        for i, line in enumerate(lines):
+            y_pos = 4 - (i * 0.5)  # y coordinate of each line
+            text_pointer.goto(4, y_pos)
+            text_pointer.write(line, align="center", font=("Arial", 30, "bold"))
+
+        if duration is not None:
+            time.sleep(duration)
+            text_pointer.clear()
 
 
 def in_check(player, opponent_pieces=None):
@@ -330,12 +349,9 @@ def update_game():
         return
 
     if not click_processed:
-        total_moves = set()
-
         # Selecting a piece
         player_pieces = white_pieces if player == 'white' else black_pieces
         for piece in player_pieces:  # try dictionary approach
-            total_moves.update(restrict_moves(piece, piece.gen_possible_moves()))
             if (click_x, click_y) == (piece.x, piece.y):
                 possible_moves = restrict_moves(piece, piece.gen_possible_moves())
                 board.highlight_square(piece, possible_moves)
@@ -348,9 +364,17 @@ def update_game():
             player = opponent(player)
 
         # Checkmate
-        if in_check(player) and not total_moves:
-            board.display_message("CHECKMATE")
-            checkmate = True
+        if in_check(player):
+            total_moves = set()
+            player_pieces = white_pieces if player == 'white' else black_pieces
+            for piece in player_pieces:
+                total_moves.update(restrict_moves(piece, piece.gen_possible_moves()))
+            if not total_moves:
+                board.display_message(f"CHECKMATE\n{opponent(player).upper()} WINS")
+                checkmate = True
+            else:
+                pass
+
         click_processed = True
 
     screen.update()
