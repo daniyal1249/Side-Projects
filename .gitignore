@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 
 *.png
+*.mp4
 
 chess_csp.py
 test_os.py
