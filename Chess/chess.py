@@ -15,31 +15,29 @@ pointer.up()
 
 class ChessPiece():
     def __init__(self, x, y, color):
-        self.x = x  # integer
-        self.y = y  # integer
+        self.x = x  # integer 0-7
+        self.y = y  # integer 0-7
         self.color = color
         self.stamp_id = None
 
     def draw(self, x=None, y=None):
-        global all_pieces
-
         if x is not None and y is not None:
             self.x, self.y = x, y
+        if self.stamp_id is not None:
+            pointer.clearstamp(self.stamp_id)
 
         pointer.up()
         pointer.goto(self.x + 0.5, self.y + 0.5)
         pointer.color(self.color)
         pointer.shape(self.shape)
         pointer.shapesize(2, 2)
-        
-        if self.stamp_id is not None:
-            pointer.clearstamp(self.stamp_id)
-        for piece in all_pieces:
-            if piece is self:
-                continue
+
+        opponent_pieces = black_pieces if self.color == 'white' else white_pieces
+        for piece in opponent_pieces:
             if (piece.x, piece.y) == (self.x, self.y):
                 pointer.clearstamp(piece.stamp_id)
                 all_pieces.remove(piece)
+                opponent_pieces.remove(piece)
                 break
         self.stamp_id = pointer.stamp()
 
@@ -52,24 +50,22 @@ class King(ChessPiece):
         else:
             self.shape = shape_dict['bK']
 
-    def gen_possible_moves(self, all_pieces):
+    def gen_possible_moves(self):
         possible_moves = {(i, j) for i in range(self.x - 1, self.x + 2) 
                          for j in range(self.y - 1, self.y + 2) 
                          if 0 <= i < 8 and 0 <= j < 8 
                          and (i, j) != (self.x, self.y)}
 
-        for piece in all_pieces:  # need to remove pawn diagonal cases
+        for piece in all_pieces:
             if (piece.x, piece.y) in possible_moves and piece.color == self.color:
                 possible_moves.remove((piece.x, piece.y))
-            
-            elif piece.color != self.color and piece not in kings and piece not in pawns:
-                for pos in piece.gen_possible_moves(all_pieces).intersection(possible_moves):
-                    possible_moves.remove(pos)
 
-            elif piece.color != self.color and piece in kings:
-                for pos in piece.gen_possible_moves(set()).intersection(possible_moves):
-                    possible_moves.remove(pos)
+            elif piece in kings and piece.color != self.color:
+                for pos in possible_moves.copy():
+                    if abs(piece.x - pos[0]) <= 1 and abs(piece.y - pos[1]) <= 1:
+                        possible_moves.remove(pos)
 
+        possible_moves = restrict_moves(self, possible_moves)
         return possible_moves
         
 class Queen(ChessPiece):
@@ -80,12 +76,12 @@ class Queen(ChessPiece):
         else:
             self.shape = shape_dict['bQ']
 
-    def gen_possible_moves(self, all_pieces):
-        possible_moves = {(i, j) for i in range(self.x - 7, self.x + 8)
-                          for j in range(self.y - 7, self.y + 8)
-                          if 0 <= i < 8 and 0 <= j < 8
-                          and ((i == self.x or j == self.y)
-                          or abs(i - self.x) == abs(j - self.y))
+    def gen_possible_moves(self):
+        possible_moves = {(i, j) for i in range(self.x - 7, self.x + 8) 
+                          for j in range(self.y - 7, self.y + 8) 
+                          if 0 <= i < 8 and 0 <= j < 8 
+                          and ((i == self.x or j == self.y) 
+                          or abs(i - self.x) == abs(j - self.y)) 
                           and (i, j) != (self.x, self.y)}
         
         for piece in all_pieces:
@@ -110,11 +106,11 @@ class Rook(ChessPiece):
         else:
             self.shape = shape_dict['bR']
 
-    def gen_possible_moves(self, all_pieces):
-        possible_moves = {(i, j) for i in range(self.x - 7, self.x + 8)
-                          for j in range(self.y - 7, self.y + 8)
+    def gen_possible_moves(self):
+        possible_moves = {(i, j) for i in range(self.x - 7, self.x + 8) 
+                          for j in range(self.y - 7, self.y + 8) 
                           if 0 <= i < 8 and 0 <= j < 8 
-                          and (i == self.x or j == self.y)
+                          and (i == self.x or j == self.y) 
                           and (i, j) != (self.x, self.y)}
         
         for piece in all_pieces:
@@ -139,9 +135,9 @@ class Bishop(ChessPiece):
         else:
             self.shape = shape_dict['bB']
 
-    def gen_possible_moves(self, all_pieces):
-        possible_moves = {(i, j) for i in range(self.x - 7, self.x + 8)
-                          for j in range(self.y - 7, self.y + 8)
+    def gen_possible_moves(self):
+        possible_moves = {(i, j) for i in range(self.x - 7, self.x + 8) 
+                          for j in range(self.y - 7, self.y + 8) 
                           if 0 <= i < 8 and 0 <= j < 8 
                           and abs(i - self.x) == abs(j - self.y) 
                           and (i, j) != (self.x, self.y)}
@@ -168,11 +164,11 @@ class Knight(ChessPiece):
         else:
             self.shape = shape_dict['bN']
 
-    def gen_possible_moves(self, all_pieces):
-        possible_moves = {(i, j) for i in range(self.x - 2, self.x + 3)
+    def gen_possible_moves(self):
+        possible_moves = {(i, j) for i in range(self.x - 2, self.x + 3) 
                           for j in range(self.y - 2, self.y + 3) 
                           if ((abs(i - self.x) == 2 and abs(j - self.y) == 1) 
-                          or (abs(i - self.x) == 1 and abs(j - self.y) == 2))
+                          or (abs(i - self.x) == 1 and abs(j - self.y) == 2)) 
                           and 0 <= i < 8 and 0 <= j < 8}
         
         for piece in all_pieces:
@@ -189,7 +185,7 @@ class Pawn(ChessPiece):
         else:
             self.shape = shape_dict['bP']
 
-    def gen_possible_moves(self, all_pieces):  # check if color switch works
+    def gen_possible_moves(self):
         if self.color == 'white':
             vstep = 1
         else:
@@ -210,6 +206,7 @@ class Pawn(ChessPiece):
                     possible_moves.add((piece.x, piece.y))
 
         return possible_moves
+
 
 class Board():
     def __init__(self):
@@ -254,51 +251,39 @@ class Board():
 
     def display_message(self, message):
         pointer.up()
-        pointer.goto(4, 4)  # Position at center
-        pointer.write(message, align="center", font=("Arial", 24, "bold"))
+        pointer.goto(4, 4)  # position at center
+        pointer.color("black")
+        pointer.write(message, align="center", font=("Arial", 30, "bold"))  # make it black and bolder
 
 
-class Check():  # can still move kings next to each other
-    def __init__(self):
-        self.attacker = None
-        
-    def set_attacker(self, piece):
-        if piece.color == 'white':
-            opp_king_index = 1
-        else:
-            opp_king_index = 0
-            
-        if (kings[opp_king_index].x, kings[opp_king_index].y) in piece.gen_possible_moves(all_pieces):
-            self.attacker = piece
-        else:
-            self.attacker = None
+def in_check(player, opponent_pieces=None):
+    king_index = 0 if player == 'white' else 1
+    if opponent_pieces is None:
+        opponent_pieces = black_pieces[1:] if player == 'white' else white_pieces[1:]
+    for piece in opponent_pieces:
+        if (kings[king_index].x, kings[king_index].y) in piece.gen_possible_moves():
+            return True
+    return False
 
-    def filter_moves(self, piece):
-        if piece.color == 'white':
-            king_index = 0
-        else:
-            king_index = 1
+def restrict_moves(piece, possible_moves):
+    x, y = piece.x, piece.y
+    opp_pieces = black_pieces[1:] if piece.color == 'white' else white_pieces[1:]
 
-        # if self.attacker is not None and piece in kings:
-        #     other_pieces = [elem for elem in all_pieces if elem != piece]
-        #     return piece.gen_possible_moves(all_pieces).difference(self.attacker.gen_possible_moves(other_pieces))
-        
-        if self.attacker is not None and piece not in kings:
-            filtered_moves = piece.gen_possible_moves(all_pieces).intersection(self.attacker.gen_possible_moves(all_pieces))
-            x, y = piece.x, piece.y
-            for pos in filtered_moves.copy():
-                piece.x, piece.y = pos
-                if (kings[king_index].x, kings[king_index].y) in self.attacker.gen_possible_moves(all_pieces):
-                    filtered_moves.remove(pos)
+    valid_moves = set()
+    for pos in possible_moves:
+        piece.x, piece.y = pos
+        opp_pieces_mod = [elem for elem in opp_pieces if (elem.x, elem.y) != pos]
+        if not in_check(piece.color, opp_pieces_mod):
+            valid_moves.add(pos)
+    piece.x, piece.y = x, y
 
-            piece.x, piece.y = x, y
-            if (self.attacker.x, self.attacker.y) in piece.gen_possible_moves(all_pieces):
-                filtered_moves.add((self.attacker.x, self.attacker.y))
+    return valid_moves
 
-            return filtered_moves
-
-        else:
-            return piece.gen_possible_moves(all_pieces)  # check if it makes copy
+def generate_moves(piece):
+    possible_moves = piece.gen_possible_moves()
+    if piece in kings:
+        return possible_moves
+    return restrict_moves(piece, possible_moves)
 
 
 def click_pos(x, y):
@@ -306,12 +291,12 @@ def click_pos(x, y):
     click_x, click_y = m.floor(x), m.floor(y)
     click_processed = False
 
-def switch_player(player):
+def opponent(player):
     if player == 'white':
         return 'black'
     else:
         return 'white'
-    
+
 
 # Load images
 shape_dict = {}
@@ -326,16 +311,17 @@ for color in ['yellow', 'gray']:
     shape_dict[color] = os.path.join('shapes', f'{color}_outline.gif')
     screen.addshape(shape_dict[color])
 
-# Set up board and pieces
+# Initialize board and pieces
 board = Board()
-check = Check()
 kings = [King(4, 0, 'white'), King(4, 7, 'black')]
 queens = [Queen(3, 0, 'white'), Queen(3, 7, 'black')]
 rooks = [Rook(0, 0, 'white'), Rook(7, 0, 'white'), Rook(0, 7, 'black'), Rook(7, 7, 'black')]
 bishops = [Bishop(2, 0, 'white'), Bishop(5, 0, 'white'), Bishop(2, 7, 'black'), Bishop(5, 7, 'black')]
 knights = [Knight(1, 0, 'white'), Knight(6, 0, 'white'), Knight(1, 7, 'black'), Knight(6, 7, 'black')]
-pawns = [Pawn(i, j, color) for i in range(8) for j, color in zip([1, 6], ['white', 'black'])]
-all_pieces = kings + queens + rooks + bishops + knights + pawns
+pawns = [Pawn(i, j, color) for j, color in zip([1, 6], ['white', 'black']) for i in range(8)]
+white_pieces = kings[:1] + queens[:1] + rooks[:2] + bishops[:2] + knights[:2] + pawns[:8]
+black_pieces = kings[1:] + queens[1:] + rooks[2:] + bishops[2:] + knights[2:] + pawns[8:]
+all_pieces = white_pieces + black_pieces
 
 # Initialize variables
 click_x, click_y = None, None
@@ -354,25 +340,26 @@ def update_game():
         total_moves = set()
 
         # Selecting a piece
-        for piece in all_pieces:  # try dictionary approach
-            total_moves.update(check.filter_moves(piece))
-            if (click_x, click_y) == (piece.x, piece.y) and piece.color == player:
-                possible_moves = check.filter_moves(piece)
+        player_pieces = white_pieces if player == 'white' else black_pieces
+        for piece in player_pieces:  # try dictionary approach
+            total_moves.update(generate_moves(piece))
+            if (click_x, click_y) == (piece.x, piece.y):
+                possible_moves = generate_moves(piece)
                 board.highlight_square(piece, possible_moves)
             
         # Moving a piece
         if board.highlight and (click_x, click_y) in possible_moves:
             board.highlight.draw(click_x, click_y)
-            check.set_attacker(board.highlight)
             board.highlight_square(piece=None, possible_moves=None, highlight=False)
             possible_moves = set()
-            player = switch_player(player)
+            player = opponent(player)
+            # print(in_check(player))
 
         # Checkmate
-        if check.attacker and not total_moves:
-            board.display_message("Checkmate!")
+        if in_check(player) and not total_moves:
+            board.display_message("CHECKMATE")
             checkmate = True
-        total_moves.clear()
+        # total_moves.clear()
         click_processed = True
 
     screen.update()
