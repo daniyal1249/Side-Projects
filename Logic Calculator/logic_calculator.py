@@ -6,7 +6,7 @@ def receive_input(symbols):
     while True:
         invalid_chars, invalid_var = set(), False
 
-        sentence = input('Enter a logical expression: ')
+        sentence = input('Enter a logical expression (or type \'E\' to exit): ')
         for key, val in symbols.items():
             sentence = sentence.replace(key, val)
 
@@ -69,7 +69,7 @@ def parse_sentence(sentence):
         elif char.isalpha():
             vars.add(char)
 
-    return ' '.join(sentence_lst), vars
+    return ' '.join(sentence_lst), sorted(vars)
 
 
 def eval_sentence(sentence, vars):
@@ -83,25 +83,29 @@ def eval_sentence(sentence, vars):
             if eval(sentence, vars_dict):
                 valid_vals.append(vars_dict)
         except Exception as e:
-            print('Invalid syntax:', e)
+            print(e)
             return None
 
-    return valid_vals
+    return valid_vals if vars else None
 
 
 def main():
-    sentence = receive_input(symbols)
-    sentence, vars = parse_sentence(sentence)
-    valid_vals = eval_sentence(sentence, vars)
+    while True:
+        sentence = receive_input(symbols)
+        sentence, vars = parse_sentence(sentence)
+        valid_vals = eval_sentence(sentence, vars)
 
-    if valid_vals is None:
-        pass
-    elif len(valid_vals) == 2 ** len(vars):
-        print('Tautology')
-    elif len(valid_vals) == 0:
-        print('Contradiction')
-    else:
-        print('Contingency')
+        if sentence == 'E' or sentence == 'e':
+            break
+
+        if valid_vals is None:
+            pass
+        elif len(valid_vals) == 2 ** len(vars):
+            print('Tautology')
+        elif len(valid_vals) == 0:
+            print('Contradiction')
+        else:
+            print('Contingency')
 
 if __name__ == '__main__':
     main()
