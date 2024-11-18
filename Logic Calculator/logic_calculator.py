@@ -27,7 +27,7 @@ def receive_input(symbols):
     
 
 def enclosing_index(seq, idx):
-    left_idx, right_idx = 0, len(seq) - 1
+    left_idx, right_idx = -1, len(seq)
 
     count = 0
     for i in range(idx - 1, -1, -1):
@@ -58,9 +58,16 @@ def parse_sentence(sentence):
     for idx, char in enumerate(sentence_lst):
         if char == '>':
             left_idx, right_idx = enclosing_index(sentence_lst, idx)
-            sentence_lst[right_idx + 1: right_idx + 1] = [')']
+            sentence_lst[right_idx:right_idx] = [')']
             sentence_lst[idx:idx + 1] = [')', '|', '(']
-            sentence_lst[left_idx:left_idx] = ['~', '(']
+            sentence_lst[left_idx + 1:left_idx + 1] = ['~', '(']
+    print(''.join(sentence_lst))  # for debugging
+
+    # Remove all instances of '()' iteratively
+    sentence = ''.join(sentence_lst)
+    while '()' in sentence:
+        sentence = sentence.replace('()', '')
+    sentence_lst = list(sentence)
     
     symbols, vars = {'&': 'and', '|': 'or', '~': 'not'}, set()
     for idx, char in enumerate(sentence_lst):
@@ -82,8 +89,13 @@ def eval_sentence(sentence, vars):
         try:
             if eval(sentence, vars_dict):
                 valid_vals.append(vars_dict)
-        except Exception as e:
-            print(e)
+        except SyntaxError as e:
+            error_msg = str(e)
+            left_idx, _ = enclosing_index(error_msg, len(error_msg) - 2)  # find ending parantheses
+            print(error_msg[:left_idx])
+            return None
+        except Exception:
+            print('invalid syntax')
             return None
 
     return valid_vals if vars else None
@@ -95,7 +107,7 @@ def main():
         sentence, vars = parse_sentence(sentence)
         valid_vals = eval_sentence(sentence, vars)
 
-        if sentence == 'E' or sentence == 'e':
+        if sentence.upper() == 'E':
             break
 
         if valid_vals is None:
