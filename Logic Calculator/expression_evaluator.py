@@ -2,7 +2,7 @@
 symbols = {'and': '&', 'or': '|', 'not': '~', 'implies': '>', '∧': '&', 
            '∨': '|', '¬': '~', '→': '>', '!': '~', '->': '>'}
 
-def receive_input(symbols):
+def receive_input(symbols, prompt):
     '''
     Repeatedly asks the user for a logical expression until its in a valid format
 
@@ -10,23 +10,25 @@ def receive_input(symbols):
     ----------
     symbols : dict
         Dictionary containing the allowed symbols/keywords paired with '&', '|', '~', or '>'
+    prompt : str
+        Prompt given to the user to enter a logical expression
 
     Returns
     -------
-    sentence : str
+    expression : str
         Expression containing only allowed characters and variable names, with symbols replaced
     '''
     while True:
         invalid_chars, invalid_var = set(), False
 
-        sentence = input('Enter a logical expression: ')
+        expression = input(prompt)
         for key, val in symbols.items():
-            sentence = sentence.replace(key, val)
+            expression = expression.replace(key, val)
 
-        for idx, char in enumerate(sentence):
+        for idx, char in enumerate(expression):
             if char not in {'(', ')', '&', '|', '~', '>', ' '} and not char.isalpha():
                 invalid_chars.add(char)
-            elif char.isalpha() and idx > 0 and sentence[idx - 1].isalpha():
+            elif char.isalpha() and idx > 0 and expression[idx - 1].isalpha():
                 invalid_var = True
 
         if invalid_chars:
@@ -36,7 +38,7 @@ def receive_input(symbols):
         
         if not (invalid_chars or invalid_var):
             break
-    return sentence
+    return expression
     
 
 def enclosing_index(seq, idx):
@@ -81,64 +83,64 @@ def enclosing_index(seq, idx):
     return left_idx, right_idx
 
 
-def parse_sentence(sentence):
+def parse_expression(expression):
     '''
-    Replaces all symbols in a sentence with the python equivalent: 'and', 'or', or 'not'
+    Replaces all symbols in an expression with the python equivalent: 'and', 'or', or 'not'
 
     Parameters
     ----------
-    sentence : str
-        Sentence containing standard symbols (i.e. '&', '|', '~', or '>')
+    expression : str
+        Expression containing standard symbols (i.e. '&', '|', '~', or '>')
 
     Returns
     -------
     str
-        Parsed sentence with spaces between each character
+        Parsed expression with spaces between each character
     
     list
-        Sorted list containing all of the variable names in the sentence
+        Sorted list containing all of the variable names in the expression
     '''
-    sentence_lst = [char for char in sentence if char != ' ']
+    expression_lst = [char for char in expression if char != ' ']
 
-    for idx, char in enumerate(sentence_lst):
+    for idx, char in enumerate(expression_lst):
         if char == '>':
-            left_idx, right_idx = enclosing_index(sentence_lst, idx)
-            sentence_lst[right_idx:right_idx] = [')']
-            sentence_lst[idx:idx + 1] = [')', '|', '(']
-            sentence_lst[left_idx + 1:left_idx + 1] = ['~', '(']
+            left_idx, right_idx = enclosing_index(expression_lst, idx)
+            expression_lst[right_idx:right_idx] = [')']
+            expression_lst[idx:idx + 1] = [')', '|', '(']
+            expression_lst[left_idx + 1:left_idx + 1] = ['~', '(']
 
     # Remove all instances of '()' iteratively
-    sentence = ''.join(sentence_lst)
-    while '()' in sentence:
-        sentence = sentence.replace('()', '')
-    sentence_lst = list(sentence)
+    expression = ''.join(expression_lst)
+    while '()' in expression:
+        expression = expression.replace('()', '')
+    expression_lst = list(expression)
     
     symbols, vars = {'&': 'and', '|': 'or', '~': 'not'}, set()
-    for idx, char in enumerate(sentence_lst):
+    for idx, char in enumerate(expression_lst):
         if char in symbols:
-            sentence_lst[idx] = symbols[char]
+            expression_lst[idx] = symbols[char]
         elif char.isalpha():
             vars.add(char)
 
-    return ' '.join(sentence_lst), sorted(vars)
+    return ' '.join(expression_lst), sorted(vars)
 
 
-def eval_sentence(sentence, vars):
+def eval_expression(expression, vars):
     '''
-    Evalutes a parsed sentence for every combination of its variable's truth values
+    Evalutes a parsed expression for every combination of its variable's truth values
 
     Parameters
     ----------
-    sentence : str
-        Parsed sentence containing 'and', 'or', or 'not' as logical operators
+    expression : str
+        Parsed expression containing 'and', 'or', or 'not' as logical operators
 
     vars : list
-        List containing all of the variable names in the sentence
+        List containing all of the variable names in the expression
 
     Returns
     -------
     valid_vals : list or None
-        - List containing the truth value combinations as dictionaries that make the sentence true
+        - List containing the truth value combinations as dictionaries that make the expression true
         - Returns None if vars is empty
     '''
     valid_vals = []
@@ -148,7 +150,7 @@ def eval_sentence(sentence, vars):
         vars_dict = {var: val for var, val in zip(vars, values)}
 
         try:
-            if sentence and eval(sentence, vars_dict):  # ensure sentence is non-empty
+            if expression and eval(expression, vars_dict):  # ensure sentence is non-empty
                 valid_vals.append(vars_dict)
         except SyntaxError as e:
             error_msg = str(e)
@@ -162,7 +164,7 @@ def eval_sentence(sentence, vars):
     return valid_vals if vars else None
 
 
-def logic_checker(symbols, display=True):
+def expression_checker(symbols, prompt, display=True):
     '''
     Prompts user to enter a well-formed logical expression and evaluates it
 
@@ -170,18 +172,20 @@ def logic_checker(symbols, display=True):
     ----------
     symbols : dict
         Dictionary containing the allowed symbols/keywords paired with '&', '|', '~', or '>'
+    prompt : str
+        Prompt given to the user to enter a logical expression
     display : bool
         If True, function prints 'Tautology', 'Contradiction', or 'Contingency'
 
     Returns
     -------
     valid_vals : list or None
-        - List containing the truth value combinations as dictionaries that make the sentence true
+        - List containing the truth value combinations as dictionaries that make the expression true
         - Returns None if vars is empty
     '''
-    sentence = receive_input(symbols)
-    sentence, vars = parse_sentence(sentence)
-    valid_vals = eval_sentence(sentence, vars)
+    expression = receive_input(symbols, prompt)
+    expression, vars = parse_expression(expression)
+    valid_vals = eval_expression(expression, vars)
 
     if display:
         if valid_vals is None:
@@ -197,7 +201,7 @@ def logic_checker(symbols, display=True):
 
 
 def main():
-    logic_checker(symbols)
+    expression_checker(symbols=symbols, prompt='Enter a logical expression: ')
 
 if __name__ == '__main__':
     main()
