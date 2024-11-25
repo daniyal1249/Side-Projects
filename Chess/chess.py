@@ -19,7 +19,8 @@ class ChessPiece():
         self.x = x  # integer 0-7
         self.y = y  # integer 0-7
         self.color = color
-        self.stamp_id = None
+        self.shape = None
+        self.stamp_id = 0
 
     def draw(self, x=None, y=None):
         if x is not None and y is not None:
@@ -245,9 +246,9 @@ class Board():
 
         if highlight:
             self.highlight = piece
-            self.stamp_id_set.add(self.draw_square(piece.x, piece.y, 'yellow', outline=True))
+            self.stamp_id_set.add(self.draw_square(piece.x, piece.y, color='yellow', outline=True))
             for pos in possible_moves:
-                self.stamp_id_set.add(self.draw_square(*pos, 'gray', outline=True))
+                self.stamp_id_set.add(self.draw_square(*pos, color='gray', outline=True))
         else:
             self.highlight = None
 
