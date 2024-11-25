@@ -6,3 +6,4 @@ __pycache__/
 
 chess_csp.py
 test_os.py
+checkers.py
