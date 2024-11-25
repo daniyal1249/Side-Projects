@@ -278,7 +278,8 @@ class Board():
 def in_check(player, opponent_pieces=None):
     king_index = 0 if player == 'white' else 1
     if opponent_pieces is None:
-        opponent_pieces = black_pieces[1:] if player == 'white' else white_pieces[1:]
+        opponent_pieces = [elem for elem in black_pieces if elem not in kings] if player == 'white' \
+                           else [elem for elem in white_pieces if elem not in kings]
     for piece in opponent_pieces:
         if (kings[king_index].x, kings[king_index].y) in piece.gen_possible_moves():
             return True
@@ -286,16 +287,29 @@ def in_check(player, opponent_pieces=None):
 
 def restrict_moves(piece, possible_moves):
     x, y = piece.x, piece.y
-    opp_pieces = black_pieces[1:] if piece.color == 'white' else white_pieces[1:]
+    opp_pieces = [elem for elem in black_pieces if elem not in kings] if piece.color == 'white' \
+                  else [elem for elem in white_pieces if elem not in kings]
 
     valid_moves = set()
     for pos in possible_moves:
         piece.x, piece.y = pos
-        opp_pieces_mod = [elem for elem in opp_pieces if (elem.x, elem.y) != pos]
-        if not in_check(piece.color, opp_pieces_mod):
-            valid_moves.add(pos)
-    piece.x, piece.y = x, y
+        
+        # Remove hypothetical taken piece
+        taken_piece = None
+        for elem in opp_pieces:
+            if (elem.x, elem.y) == pos:
+                taken_piece = elem
+                all_pieces.remove(elem)
+                opp_pieces.remove(elem)
+                break
 
+        if not in_check(piece.color, opp_pieces):
+            valid_moves.add(pos)
+        if taken_piece:
+            all_pieces.append(taken_piece)
+            opp_pieces.append(taken_piece)
+
+    piece.x, piece.y = x, y
     return valid_moves
 
 
@@ -356,6 +370,7 @@ def update_game():
             if (click_x, click_y) == (piece.x, piece.y):
                 possible_moves = restrict_moves(piece, piece.gen_possible_moves())
                 board.highlight_square(piece, possible_moves)
+                break
             
         # Moving a piece
         if board.highlight and (click_x, click_y) in possible_moves:
