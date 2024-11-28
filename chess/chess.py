@@ -253,27 +253,62 @@ class Board():
             self.highlight = None
 
     def display_message(self, message, duration=None):
+        '''
+        Displays a message in the center of the board
+        '''
         text_pointer = turtle.Turtle()
         text_pointer.hideturtle()
         text_pointer.speed(0)
         text_pointer.up()
         text_pointer.color('black')
 
-        # Create white background
-        for i in range(5, 11):
-            for j in range(7, 9):
-                self.draw_square(i/2 - 1/4, j/2 - 1/4, 'white', outline=False, width=self.square_width/2)
-
         lines = message.split('\n')
+        bg_width = self.square_width / 2
+
+        # Create a white background for the text
+        y_pos = 4
+        for _ in range(len(lines)):
+            for i in range(5, 11):
+                self.draw_square(i/2 - 1/4, y_pos - 1/4, 'white', outline=False, width=bg_width)
+            y_pos -= 1/2
+
+        y_pos = 4
         for i, line in enumerate(lines):
-            y_pos = 4 - (i * 0.5)  # y coordinate of each line
             text_pointer.goto(4, y_pos)
             text_pointer.write(line, align='center', font=('Arial', 30, 'bold'))
+            y_pos -= 1/2
 
         if duration is not None:
             time.sleep(duration)
             text_pointer.clear()
 
+
+def restrict_moves(piece, possible_moves):
+    x, y = piece.x, piece.y
+    opp_pieces = [elem for elem in black_pieces if elem not in kings] if piece.color == 'white' \
+                  else [elem for elem in white_pieces if elem not in kings]
+
+    valid_moves = set()
+    for pos in possible_moves:
+        piece.x, piece.y = pos
+
+        # Remove hypothetical captured piece
+        captured_piece = None
+        for elem in opp_pieces:
+            if (elem.x, elem.y) == pos:
+                captured_piece = elem
+                all_pieces.remove(elem)
+                opp_pieces.remove(elem)
+                break
+
+        if not in_check(piece.color, opp_pieces):
+            valid_moves.add(pos)
+        if captured_piece:
+            all_pieces.append(captured_piece)
+            opp_pieces.append(captured_piece)
+
+    piece.x, piece.y = x, y
+    return valid_moves
 
 def in_check(player, opponent_pieces=None):
     king_index = 0 if player == 'white' else 1
@@ -285,32 +320,29 @@ def in_check(player, opponent_pieces=None):
             return True
     return False
 
-def restrict_moves(piece, possible_moves):
-    x, y = piece.x, piece.y
-    opp_pieces = [elem for elem in black_pieces if elem not in kings] if piece.color == 'white' \
-                  else [elem for elem in white_pieces if elem not in kings]
+def checkmate_handler(player, player_pieces):
+    global game_end
 
-    valid_moves = set()
-    for pos in possible_moves:
-        piece.x, piece.y = pos
+    total_moves = set()
+    player_pieces = white_pieces if player == 'white' else black_pieces
+    for piece in player_pieces:
+        total_moves.update(restrict_moves(piece, piece.gen_possible_moves()))
 
-        # Remove hypothetical taken piece
-        taken_piece = None
-        for elem in opp_pieces:
-            if (elem.x, elem.y) == pos:
-                taken_piece = elem
-                all_pieces.remove(elem)
-                opp_pieces.remove(elem)
-                break
+    if not total_moves:
+        if in_check(player):
+            board.display_message(f'CHECKMATE\n{opponent(player).upper()} WINS')
+        else:
+            board.display_message('STALEMATE')
+        game_end = True
 
-        if not in_check(piece.color, opp_pieces):
-            valid_moves.add(pos)
-        if taken_piece:
-            all_pieces.append(taken_piece)
-            opp_pieces.append(taken_piece)
-
-    piece.x, piece.y = x, y
-    return valid_moves
+def promote_pawn(piece):
+    if not isinstance(piece, Pawn):
+        return
+    
+    if piece.color == 'white' and piece.y == 7:
+        pass
+    elif piece.color == 'black' and piece.y == 0:
+        pass
 
 
 def click_pos(x, y):
@@ -327,14 +359,14 @@ def opponent(player):
 
 # Load images
 shape_dict = {}
-for piece_type in ['K', 'Q', 'R', 'B', 'N', 'P']:
+for piece_type in ('K', 'Q', 'R', 'B', 'N', 'P'):
     shape_dict[f'w{piece_type}'] = os.path.join('shapes', f'w{piece_type}.gif')
     shape_dict[f'b{piece_type}'] = os.path.join('shapes', f'b{piece_type}.gif')
 
 for path in shape_dict.values():
     screen.addshape(path)
 
-for color in ['yellow', 'gray']:
+for color in ('yellow', 'gray'):
     shape_dict[color] = os.path.join('shapes', f'{color}_outline.gif')
     screen.addshape(shape_dict[color])
 
@@ -345,7 +377,7 @@ queens = [Queen(3, 0, 'white'), Queen(3, 7, 'black')]
 rooks = [Rook(0, 0, 'white'), Rook(7, 0, 'white'), Rook(0, 7, 'black'), Rook(7, 7, 'black')]
 bishops = [Bishop(2, 0, 'white'), Bishop(5, 0, 'white'), Bishop(2, 7, 'black'), Bishop(5, 7, 'black')]
 knights = [Knight(1, 0, 'white'), Knight(6, 0, 'white'), Knight(1, 7, 'black'), Knight(6, 7, 'black')]
-pawns = [Pawn(i, j, color) for j, color in zip([1, 6], ['white', 'black']) for i in range(8)]
+pawns = [Pawn(i, j, color) for j, color in zip((1, 6), ('white', 'black')) for i in range(8)]
 white_pieces = kings[:1] + queens[:1] + rooks[:2] + bishops[:2] + knights[:2] + pawns[:8]
 black_pieces = kings[1:] + queens[1:] + rooks[2:] + bishops[2:] + knights[2:] + pawns[8:]
 all_pieces = white_pieces + black_pieces
@@ -375,23 +407,13 @@ def update_game():
         # Moving a piece
         if board.highlight and (click_x, click_y) in possible_moves:
             board.highlight.draw(click_x, click_y)
+            promote_pawn(piece=board.highlight)
             board.highlight_square(piece=None, possible_moves=None, highlight=False)
             possible_moves = set()
             player = opponent(player)
 
-
         # Checkmate and stalemate handler
-        total_moves = set()
-        player_pieces = white_pieces if player == 'white' else black_pieces
-        for piece in player_pieces:
-            total_moves.update(restrict_moves(piece, piece.gen_possible_moves()))
-
-        if not total_moves:
-            if in_check(player):
-                board.display_message(f'CHECKMATE\n{opponent(player).upper()} WINS')
-            else:
-                board.display_message('STALEMATE')
-            game_end = True
+        checkmate_handler(player=player, player_pieces=player_pieces)
 
         click_processed = True
 
@@ -401,10 +423,12 @@ def update_game():
 def main():
     screen.listen()
     screen.onscreenclick(click_pos)
+    # Set up board
     board.draw()
     for piece in all_pieces:
         piece.draw()
     update_game()
     turtle.done()
 
-main()
+if __name__ == '__main__':
+    main()
