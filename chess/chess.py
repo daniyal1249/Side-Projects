@@ -257,18 +257,18 @@ class Board():
         text_pointer.hideturtle()
         text_pointer.speed(0)
         text_pointer.up()
-        text_pointer.color("black")
+        text_pointer.color('black')
 
         # Create white background
         for i in range(5, 11):
             for j in range(7, 9):
                 self.draw_square(i/2 - 1/4, j/2 - 1/4, 'white', outline=False, width=self.square_width/2)
 
-        lines = message.split("\n")
+        lines = message.split('\n')
         for i, line in enumerate(lines):
             y_pos = 4 - (i * 0.5)  # y coordinate of each line
             text_pointer.goto(4, y_pos)
-            text_pointer.write(line, align="center", font=("Arial", 30, "bold"))
+            text_pointer.write(line, align='center', font=('Arial', 30, 'bold'))
 
         if duration is not None:
             time.sleep(duration)
@@ -293,7 +293,7 @@ def restrict_moves(piece, possible_moves):
     valid_moves = set()
     for pos in possible_moves:
         piece.x, piece.y = pos
-        
+
         # Remove hypothetical taken piece
         taken_piece = None
         for elem in opp_pieces:
@@ -355,12 +355,12 @@ click_x, click_y = None, None
 click_processed = True
 possible_moves = set()
 player = 'white'
-checkmate = False
+game_end = False
 
 def update_game():
-    global click_processed, possible_moves, player, checkmate
+    global click_processed, possible_moves, player, game_end
 
-    if checkmate:
+    if game_end:
         return
 
     if not click_processed:
@@ -379,17 +379,19 @@ def update_game():
             possible_moves = set()
             player = opponent(player)
 
-        # Checkmate
-        if in_check(player):
-            total_moves = set()
-            player_pieces = white_pieces if player == 'white' else black_pieces
-            for piece in player_pieces:
-                total_moves.update(restrict_moves(piece, piece.gen_possible_moves()))
-            if not total_moves:
-                board.display_message(f"CHECKMATE\n{opponent(player).upper()} WINS")
-                checkmate = True
+
+        # Checkmate and stalemate handler
+        total_moves = set()
+        player_pieces = white_pieces if player == 'white' else black_pieces
+        for piece in player_pieces:
+            total_moves.update(restrict_moves(piece, piece.gen_possible_moves()))
+
+        if not total_moves:
+            if in_check(player):
+                board.display_message(f'CHECKMATE\n{opponent(player).upper()} WINS')
             else:
-                pass
+                board.display_message('STALEMATE')
+            game_end = True
 
         click_processed = True
 
